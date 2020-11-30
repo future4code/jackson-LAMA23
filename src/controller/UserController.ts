@@ -1,21 +1,25 @@
 import { Request, Response } from "express";
 import { UserInputDTO, LoginInputDTO } from "../model/User";
-import { UserBusiness } from "../business/UserBusiness";
+import userBusiness, { UserBusiness } from "../business/UserBusiness";
 import { BaseDatabase } from "../data/BaseDatabase";
 
 export class UserController {
-    async signup(req: Request, res: Response) {
+    constructor(
+        private userBusiness: UserBusiness
+    ){}
+
+    public signup = async (req: Request, res: Response) => {
         try {
+            const {email, name, password, role} = req.body
 
             const input: UserInputDTO = {
-                email: req.body.email,
-                name: req.body.name,
-                password: req.body.password,
-                role: req.body.role
+                email,
+                name,
+                password,
+                role
             }
 
-            const userBusiness = new UserBusiness();
-            const token = await userBusiness.createUser(input);
+            const token = await this.userBusiness.createUser(input);
 
             res.status(200).send({ token });
 
@@ -26,18 +30,19 @@ export class UserController {
         await BaseDatabase.destroyConnection();
     }
 
-    async login(req: Request, res: Response) {
+    public login = async (req: Request, res: Response) => {
 
         try {
+            const {email, password} = req.body
 
             const loginData: LoginInputDTO = {
-                email: req.body.email,
-                password: req.body.password
+                email,
+                password
             };
 
             console.log(loginData)
-            const userBusiness = new UserBusiness();
-            const token = await userBusiness.getUserByEmail(loginData);
+           
+            const token = await this.userBusiness.getUserByEmail(loginData);
 
             res.status(200).send({ token });
 
@@ -49,3 +54,5 @@ export class UserController {
     }
 
 }
+
+export default new UserController(userBusiness)

@@ -15,3 +15,5 @@ export class HashManager {
     }
 
 }
+
+export default new HashManager()

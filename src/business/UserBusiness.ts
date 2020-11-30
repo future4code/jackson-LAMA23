@@ -1,43 +1,107 @@
-import { UserInputDTO, LoginInputDTO } from "../model/User";
-import { UserDatabase } from "../data/UserDatabase";
-import { IdGenerator } from "../services/IdGenerator";
-import { HashManager } from "../services/HashManager";
-import { Authenticator } from "../services/Authenticator";
+import { UserInputDTO, LoginInputDTO, User } from "../model/User";
+import idGenerator, { IdGenerator } from "../services/IdGenerator";
+import hashManager, { HashManager } from "../services/HashManager";
+import authenticator, { Authenticator } from "../services/Authenticator";
+import userDatabase, { UserDatabase } from "../data/UserDatabase";
+import { CustomError } from "../error/CustomError";
 
 export class UserBusiness {
 
-    async createUser(user: UserInputDTO) {
+    constructor(
+        private idGenerator: IdGenerator,
+        private hashManager: HashManager,
+        private authenticator: Authenticator,
+        private userDatabase: UserDatabase
+    ) { }
 
-        const idGenerator = new IdGenerator();
-        const id = idGenerator.generate();
+    public createUser = async (user: UserInputDTO): Promise<any> => {
+        try {
+            const { name, email, password, role } = user
 
-        const hashManager = new HashManager();
-        const hashPassword = await hashManager.hash(user.password);
+            if (
+                !name ||
+                !email ||
+                !password ||
+                !role
+            ) {
+                throw new CustomError(422, "'name', 'emai',  'password' and 'role' are required")
+            }
 
-        const userDatabase = new UserDatabase();
-        await userDatabase.createUser(id, user.email, user.name, hashPassword, user.role);
+            if (password.length < 6) {
+                throw new CustomError(422, "Invalid password")
+            }
 
-        const authenticator = new Authenticator();
-        const accessToken = authenticator.generateToken({ id, role: user.role });
+            if (!email.includes("@")) {
+                throw new CustomError(422, "Invalid email")
+            }
 
-        return accessToken;
+            const id = this.idGenerator.generate();
+
+            const hashPassword = await this.hashManager.hash(password);
+
+            await this.userDatabase.createUser(
+                new User(
+                    id,
+                    name,
+                    email,
+                    hashPassword,
+                    User.stringToUserRole(role)
+                )
+            );
+
+            const accessToken = this.authenticator.generateToken({
+                id,
+                role
+            });
+
+            return accessToken;
+        } catch (error) {
+            throw new CustomError(error.statusCode, error.message)
+        }
     }
 
-    async getUserByEmail(user: LoginInputDTO) {
+    public getUserByEmail = async (user: LoginInputDTO): Promise<any> => {
+        try {
+            const { email, password } = user
 
-        const userDatabase = new UserDatabase();
-        const userFromDB = await userDatabase.getUserByEmail(user.email);
+            if (
+                !email ||
+                !password
+            ) {
+                throw new CustomError(422, "'email' and  'password' are required")
+            }
 
-        const hashManager = new HashManager();
-        const hashCompare = await hashManager.compare(user.password, userFromDB.getPassword());
+            const userFromDB = await this.userDatabase.getUserByEmail(email);
 
-        const authenticator = new Authenticator();
-        const accessToken = authenticator.generateToken({ id: userFromDB.getId(), role: userFromDB.getRole() });
+            if (!userFromDB) {
+                throw new CustomError(422, "Invalid email");
+            }
 
-        if (!hashCompare) {
-            throw new Error("Invalid Password!");
+            const hashCompare = await this.hashManager.compare(
+                password,
+                userFromDB.getPassword()
+            );
+
+            const accessToken = this.authenticator.generateToken({
+                id: userFromDB.getId(),
+                role: userFromDB.getRole()
+            });
+
+            if (!hashCompare) {
+                throw new CustomError(422, "Invalid password");
+            }
+
+            return accessToken;
+        } catch (error) {
+            throw new CustomError(error.statusCode, error.message)
         }
 
-        return accessToken;
     }
 }
+
+export default new UserBusiness(
+    idGenerator,
+    hashManager,
+    authenticator,
+    userDatabase
+)
