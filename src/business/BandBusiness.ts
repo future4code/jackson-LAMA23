@@ -20,7 +20,7 @@ export class BandBusiness {
             const accessToken = this.authenticator.getData(token)
 
             if (accessToken.role !== "ADMIN") {
-                throw new CustomError("Unauthorized", 401)
+                throw new CustomError(401, "Unauthorized")
             }
 
             const { name, genre, responsible } = band
@@ -30,7 +30,7 @@ export class BandBusiness {
                 !genre ||
                 !responsible
             ) {
-                throw new CustomError("'name', 'genre' and 'responsible' are required", 422)
+                throw new CustomError(422, "'name', 'genre' and 'responsible' are required")
             }
 
             const id = this.idGenerator.generate();
@@ -43,7 +43,7 @@ export class BandBusiness {
             )
 
         } catch (error) {
-            throw new CustomError(error.message, error.code)
+            throw new CustomError(error.statusCode, error.message)
         }
     }
 
@@ -53,18 +53,18 @@ export class BandBusiness {
     ): Promise<ClassBand> => {
         try {
             if (!input) {
-                throw new CustomError("Invalid input", 422);
+                throw new CustomError(422, "Invalid input");
             }
 
             const band = await this.bandDatabase.getBand(input)
 
             if (!band) {
-                throw new CustomError("Band not found", 404);
+                throw new CustomError(404, "Band not found");
             }
 
             return band
         } catch (error) {
-            throw new CustomError(error.message, error.code)
+            throw new CustomError(error.statusCode, error.message)
         }
     }
 }

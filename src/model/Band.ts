@@ -1,5 +1,3 @@
-import { BandDatabase } from "../data/BandDatabase"
-
 export class ClassBand {
     constructor(
         private id: string,

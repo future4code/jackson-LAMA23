@@ -24,15 +24,15 @@ export class UserBusiness {
                 !password ||
                 !role
             ) {
-                throw new CustomError("'name', 'emai',  'password' and 'role' are required", 422)
+                throw new CustomError(422, "'name', 'emai',  'password' and 'role' are required")
             }
 
             if (password.length < 6) {
-                throw new CustomError("Invalid password", 400)
+                throw new CustomError(422, "Invalid password")
             }
 
             if (!email.includes("@")) {
-                throw new CustomError("Invalid email", 400)
+                throw new CustomError(422, "Invalid email")
             }
 
             const id = this.idGenerator.generate();
@@ -56,7 +56,7 @@ export class UserBusiness {
 
             return accessToken;
         } catch (error) {
-            throw new CustomError(error.message, error.code)
+            throw new CustomError(error.statusCode, error.message)
         }
     }
 
@@ -64,7 +64,18 @@ export class UserBusiness {
         try {
             const { email, password } = user
 
+            if (
+                !email ||
+                !password
+            ) {
+                throw new CustomError(422, "'email' and  'password' are required")
+            }
+
             const userFromDB = await this.userDatabase.getUserByEmail(email);
+
+            if (!userFromDB) {
+                throw new CustomError(422, "Invalid email");
+            }
 
             const hashCompare = await this.hashManager.compare(
                 password,
@@ -77,12 +88,12 @@ export class UserBusiness {
             });
 
             if (!hashCompare) {
-                throw new Error("Invalid Password!");
+                throw new CustomError(422, "Invalid password");
             }
 
             return accessToken;
         } catch (error) {
-            throw new CustomError(error.message, error.code)
+            throw new CustomError(error.statusCode, error.message)
         }
 
     }
